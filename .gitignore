@@ -1,0 +1,7 @@
+# Junk files.
+*.o
+*.hi
+*.exe
+
+# Ignore my inputs.
+/inputs/day*
