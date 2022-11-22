@@ -1,3 +1,5 @@
+{-# LANGUAGE Safe #-}
+
 -- Source: https://byorgey.wordpress.com/2019/05/22/competitive-programming-in-haskell-scanner/
 -- Modified to be a proper monad transformer, and allow generic token parsing.
 module ScannerGeneric where
