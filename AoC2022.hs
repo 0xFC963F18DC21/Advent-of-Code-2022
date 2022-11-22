@@ -8,10 +8,11 @@ import Data.Array ( Array )
 import qualified Data.Array as Ar
 import Data.Maybe ( fromMaybe )
 import ScannerGeneric
+import Stream
 import System.IO ( hFlush, stdout )
 import Text.Read ( readMaybe )
 import qualified Text.Regex.Base as RegEx
-import qualified Text.Regex.PCRE as PCRE
+import Text.Regex.PCRE ( (=~), (=~~) )
 
 -- Preliminaries and helpers.
 getInput :: Int -> IO [String]
