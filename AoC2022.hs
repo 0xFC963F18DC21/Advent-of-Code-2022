@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings, TemplateHaskell #-}
 
 module AoC2022 where
 

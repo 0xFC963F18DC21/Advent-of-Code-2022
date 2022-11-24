@@ -192,6 +192,10 @@ shiftTape n tape
   | n < 0     = callN (abs n) prev tape
   | otherwise = tape
 
+infixl 9 >!<
+(>!<) :: Tape a -> Int -> a
+t >!< ix = readTape (shiftTape ix t)
+
 callN :: (Eq n, Num n, Enum n) => n -> (a -> a) -> a -> a
 callN 0 _ x = x
 callN n f x = callN (pred n) f (f x)
