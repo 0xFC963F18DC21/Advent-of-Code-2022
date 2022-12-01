@@ -6,19 +6,32 @@ import Control.Monad
 import Control.Lens
 import Data.Array ( Array )
 import qualified Data.Array as Ar
-import Data.Maybe ( fromMaybe )
+import Data.ByteString.Lazy ( ByteString )
+import qualified Data.ByteString.Lazy as BS
+import qualified Data.Char as Ch
+import qualified Data.List as L
+import Data.Maybe ( fromMaybe, fromJust, isNothing )
 import ScannerGeneric
 import Stream
 import System.IO ( hFlush, stdout )
-import Text.Read ( readMaybe )
+import Text.ParserCombinators.ReadP
+import Text.Read ( readMaybe, readEither )
 import qualified Text.Regex.Base as RegEx
 import Text.Regex.PCRE ( (=~), (=~~) )
 
 -- Preliminaries and helpers.
-getInput :: Int -> IO [String]
-getInput day
+getRawInput :: Int -> IO String
+getRawInput day
   | day < 1 || day > 25 = error "Invalid day!"
-  | otherwise           = lines <$> readFile ("inputs/day" ++ (show day ++ ".txt"))
+  | otherwise           = readFile ("inputs/day" ++ (show day ++ ".txt"))
+
+getInput :: Int -> IO [String]
+getInput = (lines <$>) . getRawInput
+
+getInputBytes :: Int -> IO ByteString
+getInputBytes day
+  | day < 1 || day > 25 = error "Invalid day!"
+  | otherwise           = BS.readFile ("inputs/day" ++ (show day ++ ".txt"))
 
 prompt :: String -> IO String
 prompt msg = putStr msg >> hFlush stdout >> getLine
@@ -61,8 +74,22 @@ todo :: IO ()
 todo = putStrLn "TODO"
 
 -- Day 1.
+elfLine :: StrScannerT IO (Maybe Int)
+elfLine = nextTokenMaybe >>= \ case
+  Nothing -> return Nothing
+  Just s  -> case readEither s of
+    Left _  -> return Nothing
+    Right i -> return (Just i)
+
+elf :: StrScannerT IO [Int]
+elf = fmap fromJust <$> scanManyUntil isNothing elfLine
+
 day1 :: Day
-day1 _ = getInput 1 >> todo
+day1 p = do
+  elves <- getInput 1 >>= runOnWordsT (scanMany elf)
+  print $ case p of
+    1  -> maximum (sum <$> elves)
+    ~2 -> sum $ take 3 $ L.sortBy (flip compare) $ fmap sum elves
 
 -- Day 2.
 day2 :: Day

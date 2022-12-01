@@ -1,11 +1,12 @@
-{-# LANGUAGE Safe #-}
+{-# LANGUAGE LambdaCase, Safe #-}
 
 -- Source: https://byorgey.wordpress.com/2019/05/22/competitive-programming-in-haskell-scanner/
 -- Modified to be a proper monad transformer, and allow generic token parsing.
 module ScannerGeneric where
 
+import Control.Applicative ( Alternative(..) )
 import Control.Monad ( replicateM, replicateM_, unless, void )
-import Control.Monad.Trans.State.Lazy ( StateT, evalStateT, get, put )
+import Control.Monad.Trans.State.Lazy ( StateT, evalState, evalStateT, get, put, modify )
 import Data.ByteString ( ByteString )
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as LB
@@ -29,8 +30,22 @@ runScannerT_ tkf scn = void . runScannerT tkf scn
 runScanner :: (s -> [s]) -> Scanner s a -> s -> a
 runScanner tkf scn = runIdentity . runScannerT tkf scn
 
+runOnWordsT :: Monad m => ScannerT s m a -> [s] -> m a
+runOnWordsT = evalStateT
+
+runOnWords :: Scanner s a -> [s] -> a
+runOnWords = evalState
+
+runOnWordsT_ :: Monad m => ScannerT s m a -> [s] -> m ()
+runOnWordsT_ = (void .) . evalStateT
+
 nextToken :: Monad m => ScannerT s m s
 nextToken = get >>= \ ~(s : ss) -> put ss >> return s
+
+nextTokenMaybe :: Monad m => ScannerT s m (Maybe s)
+nextTokenMaybe = get >>= \ case
+  []     -> return Nothing
+  s : ss -> put ss >> return (Just s)
 
 skipToken :: Monad m => ScannerT s m ()
 skipToken = nextToken >>= const (return ())
@@ -50,8 +65,28 @@ scanUntil pred scn = scn >>= (`unless` scanUntil pred scn) . pred
 scanMany :: Monad m => ScannerT s m a -> ScannerT s m [a]
 scanMany scn = get >>= \ xs -> if null xs then return [] else (:) <$> scn <*> scanMany scn
 
+scanManyUntil :: Monad m => (a -> Bool) -> ScannerT s m a -> ScannerT s m [a]
+scanManyUntil pred scn = do
+  token <- scn
+  if   pred token
+  then return []
+  else (token :) <$> scanManyUntil pred scn
+
 scanN :: Monad m => Int -> ScannerT s m a -> ScannerT s m [a]
 scanN = replicateM
+
+-- Just for the sake of ease of use, this creates a backtracking scanner.
+data TriState l r
+  = Absent
+  | Failure l
+  | Success r
+  deriving (Functor, Eq, Show, Read)
+
+attempt :: Monad m => ScannerT s m (TriState s a) -> ScannerT s m (Maybe a)
+attempt scn = scn >>= \ case
+  Absent    -> return Nothing
+  Failure s -> modify (s :) >> return Nothing
+  Success a -> return (Just a)
 
 -- The type class used for automatically handling defaults for ScannerT.
 class Scannable s where
