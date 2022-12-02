@@ -3,6 +3,7 @@
 module AoC2022 where
 
 import Control.Monad
+import Control.Monad.Trans.Class ( lift )
 import Control.Lens
 import Data.Array ( Array )
 import qualified Data.Array as Ar
@@ -10,6 +11,8 @@ import Data.ByteString.Lazy ( ByteString )
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Char as Ch
 import qualified Data.List as L
+import Data.Map ( Map )
+import qualified Data.Map as M
 import Data.Maybe ( fromMaybe, fromJust, isNothing )
 import ScannerGeneric
 import Stream
@@ -92,8 +95,81 @@ day1 p = do
     ~2 -> sum $ take 3 $ L.sortBy (flip compare) $ fmap sum elves
 
 -- Day 2.
+data RPS
+  = R | P | S
+  deriving (Show, Eq, Ord, Enum, Bounded)
+
+data RPSStatus
+  = Win
+  | Loss
+  | Draw
+  deriving (Show, Eq, Ord, Enum, Bounded)
+
+rpsValue :: RPS -> Int
+rpsValue R = 1
+rpsValue P = 2
+rpsValue S = 3
+
+statusValue :: RPSStatus -> Int
+statusValue Win  = 6
+statusValue Draw = 3
+statusValue Loss = 0
+
+rpsMatch :: RPS -> RPS -> RPSStatus
+rpsMatch R P = Win
+rpsMatch P S = Win
+rpsMatch S R = Win
+rpsMatch x y
+  | x == y    = Draw
+  | otherwise = Loss
+
+getScore1 :: RPS -> RPS -> Int
+getScore1 opp you
+  = let status = rpsMatch opp you
+    in  rpsValue you + statusValue status
+
+getScore2 :: RPS -> RPSStatus -> Int
+getScore2 opp goal
+  = let intended = getIntended opp goal
+    in  rpsValue intended + statusValue goal
+    where
+      getIntended R Win  = P
+      getIntended P Win  = S
+      getIntended S Win  = R
+      getIntended x Draw = x
+      getIntended R Loss = S
+      getIntended P Loss = R
+      getIntended S Loss = P
+
+scanRPS :: Monad m => StrScannerT m RPS
+scanRPS = (\ case
+  "A"  -> R
+  "X"  -> R
+  "B"  -> P
+  "Y"  -> P
+  "C"  -> S
+  ~"Z" -> S) <$> nextToken
+
+scanStatus :: Monad m => StrScannerT m RPSStatus
+scanStatus = (\ case
+  "X"  -> Loss
+  "Y"  -> Draw
+  ~"Z" -> Win) <$> nextToken
+
+scanMatch1 :: Monad m => StrScannerT m (RPS, RPS)
+scanMatch1 = (,) <$> scanRPS <*> scanRPS
+
+scanMatch2 :: Monad m => StrScannerT m (RPS, RPSStatus)
+scanMatch2 = (,) <$> scanRPS <*> scanStatus
+
 day2 :: Day
-day2 _ = getInput 2 >> todo
+day2 p = getRawInput 2 >>= runScannerT'_ (case p of
+  1  -> do
+    matches <- scanMany scanMatch1
+    lift (print (L.foldl' (\ a x -> a + uncurry getScore1 x) 0 matches))
+  ~2 -> do
+    matches <- scanMany scanMatch2
+    lift (print (L.foldl' (\ a x -> a + uncurry getScore2 x) 0 matches)))
 
 -- Day 3.
 day3 :: Day
